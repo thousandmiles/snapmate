@@ -4,82 +4,62 @@ using System.Windows.Media.Imaging;
 
 namespace SnapMate.Services;
 
-/// <summary>
-/// Provides file saving operations for screenshots with automatic naming patterns.
-/// </summary>
 public interface IFileSaveService
 {
-    /// <summary>
-    /// Saves an image using the settings-defined directory and naming pattern.
-    /// </summary>
-    /// <param name="image">The image to save.</param>
-    /// <param name="settings">Application settings containing save preferences.</param>
-    /// <returns>The full path of the saved file.</returns>
     Task<string> SaveImageAsync(BitmapSource image, AppSettings settings);
-
-    /// <summary>
-    /// Saves an image to a specific path with the specified format.
-    /// </summary>
-    /// <param name="image">The image to save.</param>
-    /// <param name="filePath">The destination file path.</param>
-    /// <param name="format">The image format to use.</param>
-    /// <returns>The full path of the saved file.</returns>
     Task<string> SaveImageAsync(BitmapSource image, string filePath, ImageFormat format);
 }
 
-/// <summary>
-/// Implementation of file save service supporting multiple image formats.
-/// </summary>
 public class FileSaveService : IFileSaveService
 {
-    /// <inheritdoc />
     public async Task<string> SaveImageAsync(BitmapSource image, AppSettings settings)
     {
-        var fileName = GenerateFileName(settings.FileNamePattern, settings.DefaultFormat);
+        var fileName = GenerateFileName(settings.DefaultFormat, settings.SaveDirectory);
         var filePath = Path.Combine(settings.SaveDirectory, fileName);
-
         return await SaveImageAsync(image, filePath, settings.DefaultFormat);
     }
 
-    /// <inheritdoc />
     public async Task<string> SaveImageAsync(BitmapSource image, string filePath, ImageFormat format)
     {
         return await Task.Run(() =>
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+                {
+                    try
+                    {
+                        var directory = Path.GetDirectoryName(filePath);
+                        if (string.IsNullOrEmpty(directory))
+                            throw new InvalidOperationException("Invalid file path: directory cannot be determined");
 
-            using var fileStream = new FileStream(filePath, FileMode.Create);
-            BitmapEncoder encoder = format switch
-            {
-                ImageFormat.Png => new PngBitmapEncoder(),
-                ImageFormat.Jpg => new JpegBitmapEncoder { QualityLevel = 95 },
-                ImageFormat.Bmp => new BmpBitmapEncoder(),
-                _ => new PngBitmapEncoder()
-            };
+                        Directory.CreateDirectory(directory);
 
-            encoder.Frames.Add(BitmapFrame.Create(image));
-            encoder.Save(fileStream);
+                        using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+                        BitmapEncoder encoder = format switch
+                        {
+                            ImageFormat.Png => new PngBitmapEncoder(),
+                            ImageFormat.Jpg => new JpegBitmapEncoder { QualityLevel = 95 },
+                            ImageFormat.Bmp => new BmpBitmapEncoder(),
+                            _ => new PngBitmapEncoder()
+                        };
 
-            return filePath;
-        });
+                        encoder.Frames.Add(BitmapFrame.Create(image));
+                        encoder.Save(fileStream);
+
+                        return filePath;
+                    }
+                    catch (UnauthorizedAccessException ex)
+                    {
+                        throw new InvalidOperationException($"Access denied to save file: {filePath}", ex);
+                    }
+                    catch (IOException ex)
+                    {
+                        throw new InvalidOperationException($"Failed to save file: {ex.Message}", ex);
+                    }
+                });
     }
 
-    /// <summary>
-    /// Generates a filename using the configured pattern with date/time placeholders.
-    /// </summary>
-    /// <param name="pattern">The naming pattern (e.g., "Screenshot_{yyyy-MM-dd_HH-mm-ss}").</param>
-    /// <param name="format">The image format for the file extension.</param>
-    /// <returns>A generated filename with appropriate extension.</returns>
-    private static string GenerateFileName(string pattern, ImageFormat format)
+    private static string GenerateFileName(ImageFormat format, string saveDirectory)
     {
         var now = DateTime.Now;
-        var fileName = pattern
-            .Replace("{yyyy}", now.Year.ToString("D4"))
-            .Replace("{MM}", now.Month.ToString("D2"))
-            .Replace("{dd}", now.Day.ToString("D2"))
-            .Replace("{HH}", now.Hour.ToString("D2"))
-            .Replace("{mm}", now.Minute.ToString("D2"))
-            .Replace("{ss}", now.Second.ToString("D2"));
+        var baseFileName = $"Screenshot_{now:yyyy-MM-dd_HH-mm-ss-fff}";
 
         var extension = format switch
         {
@@ -89,6 +69,23 @@ public class FileSaveService : IFileSaveService
             _ => ".png"
         };
 
-        return fileName + extension;
+        var fileName = baseFileName + extension;
+        var fullPath = Path.Combine(saveDirectory, fileName);
+
+        if (!File.Exists(fullPath))
+            return fileName;
+
+        int counter = 1;
+        while (File.Exists(fullPath))
+        {
+            fileName = $"{baseFileName}_{counter}{extension}";
+            fullPath = Path.Combine(saveDirectory, fileName);
+            counter++;
+
+            if (counter > 9999)
+                throw new InvalidOperationException("Too many files with the same name pattern");
+        }
+
+        return fileName;
     }
 }

@@ -25,6 +25,9 @@ public partial class MainViewModel : ObservableObject
     private BitmapSource? _currentImage;
 
     [ObservableProperty]
+    private ScreenshotType _currentScreenshotType = ScreenshotType.Regional;
+
+    [ObservableProperty]
     private string _statusMessage = "Ready";
 
     [ObservableProperty]
@@ -78,7 +81,8 @@ public partial class MainViewModel : ObservableObject
                 bitmap.UriSource = new Uri(value.FilePath);
                 bitmap.EndInit();
                 CurrentImage = bitmap;
-                StatusMessage = $"Loaded: {Path.GetFileName(value.FilePath)}";
+                var fileName = Path.GetFileName(value.FilePath);
+                StatusMessage = $"Loaded: {fileName}";
             }
             catch (Exception ex)
             {
@@ -101,10 +105,99 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task ClearHistoryAsync()
     {
-        await _historyService.ClearAllAsync();
-        Screenshots.Clear();
-        CurrentImage = null;
-        StatusMessage = "History cleared";
+        if (Screenshots.Count == 0)
+        {
+            StatusMessage = "History is already empty";
+            return;
+        }
+
+        var result = MessageBox.Show(
+            $"Are you sure you want to delete all {Screenshots.Count} screenshots?\n\nThis will permanently delete all screenshot files from disk.",
+            "Clear History",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+
+        if (result != MessageBoxResult.Yes)
+        {
+            StatusMessage = "Clear history cancelled";
+            return;
+        }
+
+        try
+        {
+            StatusMessage = "Clearing history and deleting files...";
+
+            int deletedCount = 0;
+            foreach (var screenshot in Screenshots.ToList())
+            {
+                if (!string.IsNullOrEmpty(screenshot.FilePath) && File.Exists(screenshot.FilePath))
+                {
+                    try
+                    {
+                        File.Delete(screenshot.FilePath);
+                        deletedCount++;
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+
+            await _historyService.ClearAllAsync();
+            Screenshots.Clear();
+            CurrentImage = null;
+
+            StatusMessage = $"History cleared: {deletedCount} files deleted";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error clearing history: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteScreenshotAsync(Screenshot screenshot)
+    {
+        if (screenshot == null)
+            return;
+
+        var result = MessageBox.Show(
+           $"Delete this screenshot?\n\n{Path.GetFileName(screenshot.FilePath)}",
+           "Delete Screenshot",
+       MessageBoxButton.YesNo,
+        MessageBoxImage.Question,
+          MessageBoxResult.No);
+
+        if (result != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            // Delete file from disk
+            if (!string.IsNullOrEmpty(screenshot.FilePath) && File.Exists(screenshot.FilePath))
+            {
+                File.Delete(screenshot.FilePath);
+            }
+
+            // Remove from database
+            await _historyService.DeleteAsync(screenshot.Id);
+
+            // Remove from UI list
+            Screenshots.Remove(screenshot);
+
+            // Clear current image if it was the deleted one
+            if (SelectedScreenshot?.Id == screenshot.Id)
+            {
+                CurrentImage = null;
+            }
+
+            StatusMessage = $"Deleted: {Path.GetFileName(screenshot.FilePath)}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Delete failed: {ex.Message}";
+        }
     }
 
     [RelayCommand]
@@ -269,75 +362,55 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task SaveImageAsync()
     {
-        if (CurrentImage != null)
+        if (CurrentImage == null)
         {
-            try
-            {
-                var filePath = await _fileSaveService.SaveImageAsync(CurrentImage, _settingsService.Settings);
-                StatusMessage = $"Saved to {filePath}";
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"Save error: {ex.Message}";
-            }
+            StatusMessage = "No image to save";
+            return;
         }
-    }
 
-    [RelayCommand]
-    private async Task ExtractTextAsync()
-    {
-        if (CurrentImage != null && _ocrService.IsAvailable)
+        try
         {
-            try
-            {
-                StatusMessage = "Extracting text...";
-                var text = await _ocrService.ExtractTextAsync(CurrentImage);
+            StatusMessage = "Saving image...";
+            var filePath = await _fileSaveService.SaveImageAsync(CurrentImage, _settingsService.Settings);
+            var fileName = System.IO.Path.GetFileName(filePath);
 
-                if (!string.IsNullOrWhiteSpace(text))
-                {
-                    _clipboardService.CopyText(text);
-                    StatusMessage = "Text extracted and copied to clipboard";
-                }
-                else
-                {
-                    StatusMessage = "No text found";
-                }
-            }
-            catch (Exception ex)
+            // Add to history after successful save
+            var screenshot = new Screenshot
             {
-                StatusMessage = $"OCR error: {ex.Message}";
-            }
+                FilePath = filePath,
+                CapturedAt = DateTime.Now,
+                Type = CurrentScreenshotType,
+                Width = CurrentImage.PixelWidth,
+                Height = CurrentImage.PixelHeight,
+                FileSize = new FileInfo(filePath).Length
+            };
+
+            await _historyService.AddAsync(screenshot);
+            await LoadHistoryAsync();
+
+            StatusMessage = $"Saved: {fileName}";
+        }
+        catch (InvalidOperationException ex)
+        {
+            StatusMessage = $"Save failed: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Unexpected error: {ex.Message}";
         }
     }
 
     private async Task ProcessCapturedImageAsync(BitmapSource image, ScreenshotType type)
     {
-        var screenshot = new Screenshot
-        {
-            FilePath = string.Empty,
-            CapturedAt = DateTime.Now,
-            Type = type,
-            Width = image.PixelWidth,
-            Height = image.PixelHeight
-        };
+        CurrentScreenshotType = type;
 
-        if (_settingsService.Settings.AutoSave)
-        {
-            screenshot.FilePath = await _fileSaveService.SaveImageAsync(image, _settingsService.Settings);
-            screenshot.FileSize = new FileInfo(screenshot.FilePath).Length;
-        }
-
+        // Copy to clipboard if enabled
         if (_settingsService.Settings.CopyToClipboard)
         {
             _clipboardService.CopyImage(image);
         }
 
-        if (_settingsService.Settings.EnableOcr && _ocrService.IsAvailable)
-        {
-            screenshot.OcrText = await _ocrService.ExtractTextAsync(image);
-        }
-
-        await _historyService.AddAsync(screenshot);
-        await LoadHistoryAsync();
+        // Don't save or add to history - user will do that manually with Save button
+        await Task.CompletedTask;
     }
 }

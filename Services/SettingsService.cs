@@ -56,12 +56,48 @@ public class SettingsService : ISettingsService
         }
         catch (Exception)
         {
-            // If settings fail to load, use defaults
             Settings = new AppSettings();
         }
 
-        // Ensure save directory exists
+        var wasFixed = ValidateAndFixSettings();
+        
         Directory.CreateDirectory(Settings.SaveDirectory);
+
+        // Save corrected settings back to disk
+        if (wasFixed)
+        {
+           await SaveAsync();
+        }
+    }
+
+    private bool ValidateAndFixSettings()
+    {
+        bool wasModified = false;
+
+        // Fix common pattern typos
+        if (Settings.FileNamePattern.Contains("{yyy}") && !Settings.FileNamePattern.Contains("{yyyy}"))
+        {
+         Settings.FileNamePattern = Settings.FileNamePattern.Replace("{yyy}", "{yyyy}");
+         wasModified = true;
+        }
+
+        // Ensure pattern has at least one valid placeholder
+        var validPlaceholders = new[] { "{yyyy}", "{MM}", "{dd}", "{HH}", "{mm}", "{ss}", "{fff}" };
+        if (!validPlaceholders.Any(p => Settings.FileNamePattern.Contains(p)))
+        {
+         Settings.FileNamePattern = "Screenshot_{yyyy-MM-dd_HH-mm-ss}";
+            wasModified = true;
+        }
+
+        // Validate save directory
+        if (string.IsNullOrWhiteSpace(Settings.SaveDirectory))
+        {
+ Settings.SaveDirectory = Path.Combine(
+ Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "SnapMate");
+            wasModified = true;
+        }
+
+        return wasModified;
     }
 
     /// <inheritdoc />

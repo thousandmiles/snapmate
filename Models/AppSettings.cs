@@ -16,7 +16,7 @@ public class AppSettings
 
     /// <summary>
     /// Gets or sets the file naming pattern using date/time placeholders.
-    /// Supported placeholders: {yyyy}, {MM}, {dd}, {HH}, {mm}, {ss}
+    /// Supported placeholders: {yyyy}, {MM}, {dd}, {HH}, {mm}, {ss}, {fff}
     /// </summary>
   public string FileNamePattern { get; set; } = "Screenshot_{yyyy-MM-dd_HH-mm-ss}";
 
@@ -24,11 +24,6 @@ public class AppSettings
     /// Gets or sets the default image format for saving screenshots.
     /// </summary>
     public ImageFormat DefaultFormat { get; set; } = ImageFormat.Png;
-
-    /// <summary>
-    /// Gets or sets whether screenshots should be automatically saved to disk after capture.
-    /// </summary>
-    public bool AutoSave { get; set; } = true;
 
     /// <summary>
     /// Gets or sets whether screenshots should be automatically copied to the clipboard.
