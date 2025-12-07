@@ -20,35 +20,35 @@ public partial class MainWindow : FluentWindow
         DataContext = viewModel;
         _viewModel.SetOwnerWindow(() => this);
         Loaded += async (s, e) => await _viewModel.LoadHistoryCommand.ExecuteAsync(null);
-    
+
         // Register Ctrl+0 keyboard shortcut for reset zoom
         KeyDown += MainWindow_KeyDown;
     }
 
     private void ImageScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-if (Keyboard.Modifiers != ModifierKeys.Control)
- return;
+        if (Keyboard.Modifiers != ModifierKeys.Control)
+            return;
 
         e.Handled = true;
 
         // Calculate new zoom level
-     double zoomChange = e.Delta > 0 ? ZoomStep : -ZoomStep;
+        double zoomChange = e.Delta > 0 ? ZoomStep : -ZoomStep;
         double newZoom = _currentZoom + zoomChange;
 
-  // Clamp zoom level
+        // Clamp zoom level
         newZoom = Math.Max(MinZoom, Math.Min(MaxZoom, newZoom));
 
         if (Math.Abs(newZoom - _currentZoom) < 0.001)
-    return;
+            return;
 
-    // Get mouse position relative to the image
- var mousePos = e.GetPosition(DisplayImage);
-   var scrollViewer = ImageScrollViewer;
+        // Get mouse position relative to the image
+        var mousePos = e.GetPosition(DisplayImage);
+        var scrollViewer = ImageScrollViewer;
 
-   // Calculate the point to zoom into
+        // Calculate the point to zoom into
         double offsetX = mousePos.X / DisplayImage.ActualWidth;
-  double offsetY = mousePos.Y / DisplayImage.ActualHeight;
+        double offsetY = mousePos.Y / DisplayImage.ActualHeight;
 
         // Apply zoom
         _currentZoom = newZoom;
@@ -61,8 +61,8 @@ if (Keyboard.Modifiers != ModifierKeys.Control)
         // Adjust scroll position to zoom towards mouse cursor
         scrollViewer.UpdateLayout();
         scrollViewer.ScrollToHorizontalOffset(offsetX * scrollViewer.ScrollableWidth);
-  scrollViewer.ScrollToVerticalOffset(offsetY * scrollViewer.ScrollableHeight);
- }
+        scrollViewer.ScrollToVerticalOffset(offsetY * scrollViewer.ScrollableHeight);
+    }
 
     private void ResetZoom_Click(object sender, RoutedEventArgs e)
     {
@@ -72,22 +72,22 @@ if (Keyboard.Modifiers != ModifierKeys.Control)
     private void MainWindow_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.D0 && Keyboard.Modifiers == ModifierKeys.Control)
-      {
-         e.Handled = true;
-          ResetZoom();
-    }
+        {
+            e.Handled = true;
+            ResetZoom();
+        }
     }
 
     private void ResetZoom()
-{
+    {
         _currentZoom = 1.0;
-  ImageScaleTransform.ScaleX = _currentZoom;
+        ImageScaleTransform.ScaleX = _currentZoom;
         ImageScaleTransform.ScaleY = _currentZoom;
         UpdateZoomDisplay();
     }
 
     private void UpdateZoomDisplay()
-  {
+    {
         ZoomLevelText.Text = $"Zoom: {_currentZoom * 100:F0}%";
     }
 }
