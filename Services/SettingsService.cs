@@ -37,11 +37,10 @@ public class SettingsService : ISettingsService
 
     public SettingsService()
     {
-        var appData = Path.Combine(
-  Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        var appData = Path.Combine( Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "SnapMate");
         Directory.CreateDirectory(appData);
- _settingsPath = Path.Combine(appData, "settings.json");
+        _settingsPath = Path.Combine(appData, "settings.json");
     }
 
     /// <inheritdoc />
@@ -49,17 +48,17 @@ public class SettingsService : ISettingsService
     {
         try
         {
-      if (File.Exists(_settingsPath))
+            if (File.Exists(_settingsPath))
             {
-   var json = await File.ReadAllTextAsync(_settingsPath);
-    Settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
-       }
-    }
-   catch (Exception)
+                var json = await File.ReadAllTextAsync(_settingsPath);
+                Settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            }
+        }
+        catch (Exception)
         {
-  // If settings fail to load, use defaults
-   Settings = new AppSettings();
-     }
+            // If settings fail to load, use defaults
+            Settings = new AppSettings();
+        }
 
         // Ensure save directory exists
         Directory.CreateDirectory(Settings.SaveDirectory);
@@ -70,15 +69,15 @@ public class SettingsService : ISettingsService
     {
         try
         {
-     var json = JsonSerializer.Serialize(Settings, new JsonSerializerOptions
+            var json = JsonSerializer.Serialize(Settings, new JsonSerializerOptions
             {
-WriteIndented = true
-     });
+                WriteIndented = true
+            });
             await File.WriteAllTextAsync(_settingsPath, json);
-      }
+        }
         catch (Exception)
         {
             // Silently handle save errors
-    }
+        }
     }
 }

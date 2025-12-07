@@ -24,7 +24,7 @@ public interface IFileSaveService
     /// <param name="filePath">The destination file path.</param>
     /// <param name="format">The image format to use.</param>
     /// <returns>The full path of the saved file.</returns>
-  Task<string> SaveImageAsync(BitmapSource image, string filePath, ImageFormat format);
+    Task<string> SaveImageAsync(BitmapSource image, string filePath, ImageFormat format);
 }
 
 /// <summary>
@@ -35,33 +35,33 @@ public class FileSaveService : IFileSaveService
     /// <inheritdoc />
     public async Task<string> SaveImageAsync(BitmapSource image, AppSettings settings)
     {
-  var fileName = GenerateFileName(settings.FileNamePattern, settings.DefaultFormat);
-    var filePath = Path.Combine(settings.SaveDirectory, fileName);
+        var fileName = GenerateFileName(settings.FileNamePattern, settings.DefaultFormat);
+        var filePath = Path.Combine(settings.SaveDirectory, fileName);
 
-      return await SaveImageAsync(image, filePath, settings.DefaultFormat);
+        return await SaveImageAsync(image, filePath, settings.DefaultFormat);
     }
 
- /// <inheritdoc />
+    /// <inheritdoc />
     public async Task<string> SaveImageAsync(BitmapSource image, string filePath, ImageFormat format)
     {
-return await Task.Run(() =>
-{
-       Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        return await Task.Run(() =>
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
-using var fileStream = new FileStream(filePath, FileMode.Create);
+            using var fileStream = new FileStream(filePath, FileMode.Create);
             BitmapEncoder encoder = format switch
- {
-       ImageFormat.Png => new PngBitmapEncoder(),
-  ImageFormat.Jpg => new JpegBitmapEncoder { QualityLevel = 95 },
-    ImageFormat.Bmp => new BmpBitmapEncoder(),
-    _ => new PngBitmapEncoder()
+            {
+                ImageFormat.Png => new PngBitmapEncoder(),
+                ImageFormat.Jpg => new JpegBitmapEncoder { QualityLevel = 95 },
+                ImageFormat.Bmp => new BmpBitmapEncoder(),
+                _ => new PngBitmapEncoder()
             };
 
-       encoder.Frames.Add(BitmapFrame.Create(image));
-  encoder.Save(fileStream);
+            encoder.Frames.Add(BitmapFrame.Create(image));
+            encoder.Save(fileStream);
 
-    return filePath;
-      });
+            return filePath;
+        });
     }
 
     /// <summary>
@@ -72,21 +72,21 @@ using var fileStream = new FileStream(filePath, FileMode.Create);
     /// <returns>A generated filename with appropriate extension.</returns>
     private static string GenerateFileName(string pattern, ImageFormat format)
     {
-  var now = DateTime.Now;
- var fileName = pattern
-  .Replace("{yyyy}", now.Year.ToString("D4"))
-         .Replace("{MM}", now.Month.ToString("D2"))
+        var now = DateTime.Now;
+        var fileName = pattern
+            .Replace("{yyyy}", now.Year.ToString("D4"))
+            .Replace("{MM}", now.Month.ToString("D2"))
             .Replace("{dd}", now.Day.ToString("D2"))
-     .Replace("{HH}", now.Hour.ToString("D2"))
-     .Replace("{mm}", now.Minute.ToString("D2"))
-       .Replace("{ss}", now.Second.ToString("D2"));
+            .Replace("{HH}", now.Hour.ToString("D2"))
+            .Replace("{mm}", now.Minute.ToString("D2"))
+            .Replace("{ss}", now.Second.ToString("D2"));
 
-var extension = format switch
-    {
-   ImageFormat.Png => ".png",
+        var extension = format switch
+        {
+            ImageFormat.Png => ".png",
             ImageFormat.Jpg => ".jpg",
-       ImageFormat.Bmp => ".bmp",
-        _ => ".png"
+            ImageFormat.Bmp => ".bmp",
+            _ => ".png"
         };
 
         return fileName + extension;
