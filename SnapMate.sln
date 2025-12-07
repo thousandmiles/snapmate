@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36623.8 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SnapMate", "SnapMate.csproj", "{58F824E8-385B-4482-9F21-2A73FBC3F19E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{58F824E8-385B-4482-9F21-2A73FBC3F19E}.Debug|x64.ActiveCfg = Release|x64
+		{58F824E8-385B-4482-9F21-2A73FBC3F19E}.Debug|x64.Build.0 = Release|x64
+		{58F824E8-385B-4482-9F21-2A73FBC3F19E}.Release|x64.ActiveCfg = Release|x64
+		{58F824E8-385B-4482-9F21-2A73FBC3F19E}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1B507C88-8FB6-47E1-8399-B32EF23BD223}
+	EndGlobalSection
+EndGlobal
