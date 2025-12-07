@@ -304,7 +304,9 @@
 
 						<!--  Image Display with Annotation Layer  -->
 						<ScrollViewer
+                            x:Name="ImageScrollViewer"
                             HorizontalScrollBarVisibility="Auto"
+                            PreviewMouseWheel="ImageScrollViewer_PreviewMouseWheel"
                             VerticalScrollBarVisibility="Auto"
                             Visibility="{Binding CurrentImage, Converter={StaticResource NotNullToVisibilityConverter}}">
 							<Border
@@ -316,10 +318,16 @@
 								<Grid>
 									<!--  Base Image  -->
 									<Image
+                                        x:Name="DisplayImage"
                                         HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
+                                        RenderTransformOrigin="0.5,0.5"
                                         Source="{Binding CurrentImage}"
-                                        Stretch="Uniform" />
+                                        Stretch="Uniform">
+										<Image.RenderTransform>
+											<ScaleTransform x:Name="ImageScaleTransform" ScaleX="1" ScaleY="1" />
+										</Image.RenderTransform>
+									</Image>
 
 									<!--  Annotation Overlay Layer  -->
 									<Canvas Background="Transparent" />
@@ -362,6 +370,24 @@
 						<Run Text=" x " />
 						<Run Text="{Binding CurrentImage.PixelHeight, Mode=OneWay, FallbackValue=0}" />
 					</TextBlock>
+
+					<Separator Margin="15,0" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+
+					<!--  Zoom Level  -->
+					<TextBlock
+                        x:Name="ZoomLevelText"
+                        Margin="0,0,10,0"
+                        VerticalAlignment="Center"
+                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                        Text="Zoom: 100%" />
+
+					<!--  Reset Zoom Button  -->
+					<ui:Button
+                        Padding="8,4"
+                        Appearance="Secondary"
+                        Click="ResetZoom_Click"
+                        Icon="{ui:SymbolIcon ZoomFit24}"
+                        ToolTip="Reset Zoom (Ctrl+0)" />
 				</StackPanel>
 			</Grid>
 		</Border>
