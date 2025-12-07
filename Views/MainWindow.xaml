@@ -204,6 +204,7 @@
 
 							<ui:Button
                                 Margin="0,0,15,0"
+                                Command="{Binding CaptureWindowCommand}"
                                 Content="Window"
                                 Icon="{ui:SymbolIcon Window24}"
                                 ToolTip="Window Capture (Ctrl+Shift+W)" />
@@ -357,9 +358,9 @@
                     Visibility="{Binding CurrentImage, Converter={StaticResource NotNullToVisibilityConverter}}">
 					<TextBlock VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
 						<Run Text="Size:" />
-						<Run Text="{Binding CurrentImage.PixelWidth, FallbackValue=0}" />
+						<Run Text="{Binding CurrentImage.PixelWidth, Mode=OneWay, FallbackValue=0}" />
 						<Run Text=" x " />
-						<Run Text="{Binding CurrentImage.PixelHeight, FallbackValue=0}" />
+						<Run Text="{Binding CurrentImage.PixelHeight, Mode=OneWay, FallbackValue=0}" />
 					</TextBlock>
 				</StackPanel>
 			</Grid>

@@ -1,0 +1,160 @@
+<Window
+    x:Class="SnapMate.Views.WindowSelectorWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Title="Choose Window to Capture - SnapMate"
+    Width="600"
+    Height="500"
+    Background="{DynamicResource ApplicationBackgroundBrush}"
+    ResizeMode="NoResize"
+    ShowInTaskbar="False"
+    WindowStartupLocation="CenterScreen">
+	<Window.Resources>
+		<!--  Custom ListView Item Style for darker selection  -->
+		<Style x:Key="CustomListViewItemStyle" TargetType="ListViewItem">
+			<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+			<Setter Property="Padding" Value="12,8" />
+			<Setter Property="Margin" Value="0,2" />
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="ListViewItem">
+						<Border
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6">
+							<ContentPresenter />
+						</Border>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+			<Style.Triggers>
+				<!--  Mouse Over  -->
+				<Trigger Property="IsMouseOver" Value="True">
+					<Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+				</Trigger>
+				<!--  Selected  -->
+				<Trigger Property="IsSelected" Value="True">
+					<Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+				</Trigger>
+				<!--  Selected and Mouse Over  -->
+				<MultiTrigger>
+					<MultiTrigger.Conditions>
+						<Condition Property="IsSelected" Value="True" />
+						<Condition Property="IsMouseOver" Value="True" />
+					</MultiTrigger.Conditions>
+					<Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+				</MultiTrigger>
+			</Style.Triggers>
+		</Style>
+	</Window.Resources>
+
+	<Grid Margin="24">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="*" />
+			<RowDefinition Height="Auto" />
+		</Grid.RowDefinitions>
+
+		<!--  Title  -->
+		<TextBlock
+            Grid.Row="0"
+            Margin="0,0,0,8"
+            FontSize="20"
+            FontWeight="SemiBold"
+            Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+            Text="Choose Window to Capture" />
+
+		<!--  Subtitle  -->
+		<TextBlock
+            Grid.Row="1"
+            Margin="0,0,0,20"
+            FontSize="13"
+            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+            Text="Select a window from the list below or double-click to capture immediately"
+            TextWrapping="Wrap" />
+
+		<!--  Window List  -->
+		<Border
+            Grid.Row="2"
+            Background="{DynamicResource ControlFillColorDefaultBrush}"
+            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+			<ListView
+                x:Name="WindowListView"
+                Padding="4"
+                Background="Transparent"
+                BorderThickness="0"
+                ItemContainerStyle="{StaticResource CustomListViewItemStyle}"
+                MouseDoubleClick="WindowListView_MouseDoubleClick"
+                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                SelectionMode="Single">
+				<ListView.ItemTemplate>
+					<DataTemplate>
+						<Grid Margin="0,2">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" />
+								<ColumnDefinition Width="*" />
+							</Grid.ColumnDefinitions>
+
+							<!--  Window Icon  -->
+							<Border
+                                Grid.Column="0"
+                                Width="36"
+                                Height="36"
+                                Margin="0,0,12,0"
+                                Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                CornerRadius="6">
+								<ui:SymbolIcon
+                                    FontSize="20"
+                                    Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                    Symbol="Window24" />
+							</Border>
+
+							<!--  Window Information  -->
+							<StackPanel Grid.Column="1" VerticalAlignment="Center">
+								<TextBlock
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                    Text="{Binding ProcessName}"
+                                    TextTrimming="CharacterEllipsis" />
+								<TextBlock
+                                    Margin="0,2,0,0"
+                                    FontSize="12"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Text="{Binding Title}"
+                                    TextTrimming="CharacterEllipsis" />
+							</StackPanel>
+						</Grid>
+					</DataTemplate>
+				</ListView.ItemTemplate>
+			</ListView>
+		</Border>
+
+		<!--  Buttons  -->
+		<StackPanel
+            Grid.Row="3"
+            Margin="0,20,0,0"
+            HorizontalAlignment="Right"
+            Orientation="Horizontal">
+			<ui:Button
+                MinWidth="100"
+                Margin="0,0,10,0"
+                Appearance="Secondary"
+                Click="CancelButton_Click"
+                Content="Cancel" />
+			<ui:Button
+                MinWidth="100"
+                Appearance="Primary"
+                Click="CaptureButton_Click"
+                Content="Capture" />
+		</StackPanel>
+	</Grid>
+</Window>

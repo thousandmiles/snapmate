@@ -9,10 +9,6 @@ using System.Windows.Media.Imaging;
 
 namespace SnapMate.ViewModels;
 
-/// <summary>
-/// Main view model for the SnapMate application.
-/// Handles screenshot capture, editing, history management, and all user interactions.
-/// </summary>
 public partial class MainViewModel : ObservableObject
 {
     private readonly IScreenshotCaptureService _captureService;
@@ -23,6 +19,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ISettingsService _settingsService;
     private readonly IClipboardService _clipboardService;
     private readonly IFileSaveService _fileSaveService;
+    private Func<Window?>? _getOwnerWindow;
 
     [ObservableProperty]
     private BitmapSource? _currentImage;
@@ -42,9 +39,6 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _searchQuery = string.Empty;
 
-    /// <summary>
-    /// Collection of annotations applied to the current image.
-    /// </summary>
     public ObservableCollection<Annotation> Annotations { get; } = new();
 
     public MainViewModel(
@@ -67,10 +61,11 @@ public partial class MainViewModel : ObservableObject
         _fileSaveService = fileSaveService;
     }
 
-    /// <summary>
-    /// Called when a screenshot is selected from the history list.
-    /// Loads the image file and displays it in the editor.
-    /// </summary>
+    public void SetOwnerWindow(Func<Window?> getWindow)
+    {
+        _getOwnerWindow = getWindow;
+    }
+
     partial void OnSelectedScreenshotChanged(Screenshot? value)
     {
         if (value != null && File.Exists(value.FilePath))
@@ -92,9 +87,6 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Loads all screenshots from the history database.
-    /// </summary>
     [RelayCommand]
     private async Task LoadHistoryAsync()
     {
@@ -106,9 +98,6 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Clears all screenshots from history and database.
-    /// </summary>
     [RelayCommand]
     private async Task ClearHistoryAsync()
     {
@@ -118,10 +107,6 @@ public partial class MainViewModel : ObservableObject
         StatusMessage = "History cleared";
     }
 
-    /// <summary>
-    /// Initiates region-based screenshot capture.
-    /// Currently uses placeholder coordinates - will show region selector in future implementation.
-    /// </summary>
     [RelayCommand]
     private async Task CaptureRegionAsync()
     {
@@ -130,15 +115,29 @@ public partial class MainViewModel : ObservableObject
             IsCapturing = true;
             StatusMessage = "Select a region...";
 
-            // Placeholder region - will be replaced with interactive region selector
-            var region = new Int32Rect(0, 0, 800, 600);
+            var regionSelector = new Views.RegionSelectorWindow();
+            var result = regionSelector.ShowDialog();
 
-            CurrentImage = await _captureService.CaptureRegionAsync(region);
-
-            if (CurrentImage != null)
+            if (result == true && regionSelector.HasSelection)
             {
-                await ProcessCapturedImageAsync(CurrentImage, ScreenshotType.Regional);
-                StatusMessage = "Region captured successfully";
+                var region = regionSelector.SelectedRegion;
+                StatusMessage = "Capturing selected region...";
+
+                CurrentImage = await _captureService.CaptureRegionAsync(region);
+
+                if (CurrentImage != null)
+                {
+                    await ProcessCapturedImageAsync(CurrentImage, ScreenshotType.Regional);
+                    StatusMessage = $"Region captured: {region.Width}x{region.Height}";
+                }
+                else
+                {
+                    StatusMessage = "Failed to capture region";
+                }
+            }
+            else
+            {
+                StatusMessage = "Region selection cancelled";
             }
         }
         catch (Exception ex)
@@ -151,9 +150,6 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Captures the entire primary screen.
-    /// </summary>
     [RelayCommand]
     private async Task CaptureFullScreenAsync()
     {
@@ -162,12 +158,31 @@ public partial class MainViewModel : ObservableObject
             IsCapturing = true;
             StatusMessage = "Capturing full screen...";
 
-            CurrentImage = await _captureService.CaptureFullScreenAsync();
+            var ownerWindow = _getOwnerWindow?.Invoke();
 
-            if (CurrentImage != null)
+            if (ownerWindow != null)
             {
-                await ProcessCapturedImageAsync(CurrentImage, ScreenshotType.FullScreen);
-                StatusMessage = "Full screen captured successfully";
+                ownerWindow.Hide();
+                await Task.Delay(250);
+            }
+
+            try
+            {
+                CurrentImage = await _captureService.CaptureFullScreenAsync(ownerWindow);
+
+                if (CurrentImage != null)
+                {
+                    await ProcessCapturedImageAsync(CurrentImage, ScreenshotType.FullScreen);
+                    StatusMessage = "Full screen captured successfully";
+                }
+            }
+            finally
+            {
+                if (ownerWindow != null)
+                {
+                    ownerWindow.Show();
+                    ownerWindow.Activate();
+                }
             }
         }
         catch (Exception ex)
@@ -180,9 +195,67 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Copies the current image to the system clipboard.
-    /// </summary>
+    [RelayCommand]
+    private async Task CaptureWindowAsync()
+    {
+        try
+        {
+            IsCapturing = true;
+            StatusMessage = "Select a window...";
+
+            var windowSelector = new Views.WindowSelectorWindow();
+            var result = windowSelector.ShowDialog();
+
+            if (result == true && windowSelector.HasSelection)
+            {
+                StatusMessage = "Capturing window...";
+
+                var ownerWindow = _getOwnerWindow?.Invoke();
+                if (ownerWindow != null)
+                {
+                    ownerWindow.Hide();
+                }
+
+                await Task.Delay(150);
+
+                try
+                {
+                    CurrentImage = await _captureService.CaptureWindowAsync(windowSelector.SelectedWindowHandle);
+
+                    if (CurrentImage != null)
+                    {
+                        await ProcessCapturedImageAsync(CurrentImage, ScreenshotType.Window);
+                        StatusMessage = "Window captured successfully";
+                    }
+                    else
+                    {
+                        StatusMessage = "Failed to capture window";
+                    }
+                }
+                finally
+                {
+                    if (ownerWindow != null)
+                    {
+                        ownerWindow.Show();
+                        ownerWindow.Activate();
+                    }
+                }
+            }
+            else
+            {
+                StatusMessage = "Window capture cancelled";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsCapturing = false;
+        }
+    }
+
     [RelayCommand]
     private void CopyToClipboard()
     {
@@ -193,9 +266,6 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Saves the current image to disk using configured settings.
-    /// </summary>
     [RelayCommand]
     private async Task SaveImageAsync()
     {
@@ -213,9 +283,6 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Extracts text from the current image using OCR and copies it to clipboard.
-    /// </summary>
     [RelayCommand]
     private async Task ExtractTextAsync()
     {
@@ -243,11 +310,6 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Processes a captured screenshot: saves to disk, adds to history, performs OCR if enabled.
-    /// </summary>
-    /// <param name="image">The captured image.</param>
-    /// <param name="type">The type of screenshot capture.</param>
     private async Task ProcessCapturedImageAsync(BitmapSource image, ScreenshotType type)
     {
         var screenshot = new Screenshot
@@ -259,29 +321,23 @@ public partial class MainViewModel : ObservableObject
             Height = image.PixelHeight
         };
 
-        // Auto-save if enabled
         if (_settingsService.Settings.AutoSave)
         {
             screenshot.FilePath = await _fileSaveService.SaveImageAsync(image, _settingsService.Settings);
             screenshot.FileSize = new FileInfo(screenshot.FilePath).Length;
         }
 
-        // Copy to clipboard if enabled
         if (_settingsService.Settings.CopyToClipboard)
         {
             _clipboardService.CopyImage(image);
         }
 
-        // OCR if enabled
         if (_settingsService.Settings.EnableOcr && _ocrService.IsAvailable)
         {
             screenshot.OcrText = await _ocrService.ExtractTextAsync(image);
         }
 
-        // Save to history
         await _historyService.AddAsync(screenshot);
-
-        // Reload history
         await LoadHistoryAsync();
     }
 }
